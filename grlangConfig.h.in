@@ -1,0 +1,7 @@
+// the configured options and settings for GRlang
+#define grlang_VERSION_MAJOR @grlang_VERSION_MAJOR@
+#define grlang_VERSION_MINOR @grlang_VERSION_MINOR@
+
+#define PLATFORM_X64 @configX64@
+#define PLATFORM_X32 @configX32@
+
