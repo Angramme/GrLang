@@ -39,6 +39,6 @@ namespace grComp {
 		double RealNumValue;
 
 		Lexer(std::istream* stream);
-		int gettok();
+		int get_tok();
 	};
 }

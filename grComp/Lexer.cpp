@@ -10,7 +10,7 @@ namespace grComp {
 		: code(stream)
 	{}
 
-	int Lexer::gettok() {
+	int Lexer::get_tok() {
 		while (isspace(LastChar) && LastChar != '\n') LastChar = code->get();
 
 #define RETURN(val) { cur_tok = val; return val; }
