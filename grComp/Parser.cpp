@@ -40,12 +40,9 @@ namespace grComp {
 	private:
 
 		//ERROR Logging
-		std::unique_ptr<ExprAST> LogError(const char *Str) {
+		template<typename ASTtype>
+		std::unique_ptr<ASTtype> LogError(const char *Str) {
 			fprintf(stderr, "LogError: %s\n", Str);
-			return nullptr;
-		}
-		std::unique_ptr<PrototypeAST> LogErrorP(const char *Str) {
-			LogError(Str);
 			return nullptr;
 		}
 
@@ -54,6 +51,39 @@ namespace grComp {
 
 #define CurTok m_lexer->cur_tok
 #define GetTok m_lexer->get_tok
+
+
+		/// top ::= definition | external | expression | ';'
+		void MainLoop() {
+			while (1) {
+				switch (CurTok) {
+				case tok_eof:
+					return;
+				case ';': // ignore top-level semicolons.
+					GetTok();
+					break;
+				/*case tok_extern:
+					HandleExtern();
+					break;*/
+				default:
+					HandleDefinition();
+					break;
+
+					//HandleTopLevelExpression(); not allowed in GR
+					//break;
+				}
+			}
+		}
+
+		void HandleDefinition() {
+			if (ParseDefinition()) {
+				//fprintf(stderr, "Parsed a function definition.\n");
+			}
+			else {
+				// Skip token for error recovery.
+				GetTok();
+			}
+		}
 
 
 		/// expression
@@ -76,7 +106,7 @@ namespace grComp {
 		std::unique_ptr<ExprAST> ParsePrimary() {
 			switch (CurTok) {
 			default:
-				return LogError("unknown token when expecting an expression");
+				return LogError<ExprAST>("unknown token when expecting an expression");
 			case tok_identifier:
 				return ParseIdentifierExpr();
 			case tok_real_number:
@@ -101,7 +131,7 @@ namespace grComp {
 				return nullptr;
 
 			if (CurTok != ')')
-				return LogError("expected ')'");
+				return LogError<ExprAST>("expected ')'");
 			GetTok(); // eat ).
 			return V;
 		}
@@ -131,7 +161,7 @@ namespace grComp {
 						break;
 
 					if (CurTok != ',')
-						return LogError("Expected ')' or ',' in argument list");
+						return LogError<ExprAST>("Expected ')' or ',' in argument list");
 					GetTok();
 				}
 			}
@@ -193,6 +223,65 @@ namespace grComp {
 					std::move(RHS));
 			}  // loop around to the top of the while loop.
 		}
+
+
+		// =========== Function Prototype and Definition Parser ==========
+		
+		/// prototype
+		///   ::= id '(' id* ')'
+		std::unique_ptr<PrototypeAST> ParsePrototype() {
+			if (CurTok != tok_identifier)
+				return LogError<PrototypeAST>("Expected function name in prototype");
+
+			std::string FnName = m_lexer->IdentifierStr;
+			GetTok();
+
+			//if (CurTok != '(')
+			//	return LogErrorP("Expected '(' in prototype");
+
+			// Read the list of argument names.
+			std::vector<std::string> ArgNames;
+			while (GetTok() == tok_identifier) {
+				ArgNames.push_back(m_lexer->IdentifierStr);
+				if (GetTok() != ':')
+					return LogError<PrototypeAST>("Expected a type for the function argument");
+				GetTok(); //eat type  (TODO: add actual type to the language)
+			}
+			/*if (CurTok != ')')
+				return LogErrorP("Expected ')' in prototype");*/
+
+			if (CurTok != tok_func_arrow)
+				return LogError<PrototypeAST>("Expected a function arrow \"=>\" followed by return value/s.");
+			GetTok();  // eat '=>'.
+
+			return std::make_unique<PrototypeAST>(FnName, std::move(ArgNames));
+		}
+		
+		/// definition ::= 'def' prototype expression
+		std::unique_ptr<FunctionAST> ParseDefinition() {
+			//GetTok();  // eat def.
+			auto Proto = ParsePrototype();
+			if (!Proto) return nullptr;
+
+			if (CurTok != '{')
+				return LogError<FunctionAST>("Expected \"{\"");
+
+			auto E = ParseExpression();
+			if (!E)
+				return nullptr;
+
+			if (GetTok() != '}')
+				return LogError<FunctionAST>("Expected \"}\"");
+			GetTok(); //eat }
+
+			return std::make_unique<FunctionAST>(std::move(Proto), std::move(E));
+		}
+		
+
+		// =========== Command Parser =============
+
+
+
 
 #undef CurTok
 #undef GetTok

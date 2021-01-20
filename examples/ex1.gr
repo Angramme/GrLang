@@ -1,0 +1,57 @@
+fn1 a:R => b:R c:Z{
+	final b := a*10.15
+	mut c := Z!(a)
+	final c *= 3
+}
+
+
+
+X struct{
+	a:R := 0,
+	b:N, 
+}
+
+add this:X other:X => !this{
+	this.a += other.a
+	this.b += other.b
+	final this
+}
+
+
+struct_demo a:X => b:X {
+	c := X!(0, 0)
+	c add= a
+	final b := c
+}
+
+switch_demo a:X => b:Z {
+	F := switch a:
+		is X!(1, 2) set 1,
+		is X!(3, 4) set 3,
+		else set 5
+	
+	switch F: $throws error because final is not allowed in conditionals
+		is 3 do final b := 1
+		else do final b := 2
+
+	final b := F
+}
+
+
+$ this is a comment
+MAIN hi:N => r0:B {
+	c d := fn1(hi)
+
+	if not $comment$ true {
+		$pass
+	}
+	elif c =/ 5.3 and d = 6 
+		and hi <= 34 {
+		
+		print("Hello WOrld!!!")
+	}
+
+	print("bye bye!")
+
+	final r0 = 0
+}

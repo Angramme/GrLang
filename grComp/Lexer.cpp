@@ -90,7 +90,7 @@ namespace grComp {
 				RETURN(tok_line_break);
 			}
 			else {
-				return gettok();
+				return get_tok();
 			}
 		}
 
@@ -102,7 +102,7 @@ namespace grComp {
 
 			if (LastChar != EOF) {
 				LastChar = code->get();
-				return gettok();
+				return get_tok();
 			}
 		}
 

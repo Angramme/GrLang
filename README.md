@@ -82,3 +82,10 @@ final value := switch x:
 ```
 
 (... to be continued ...)
+
+
+
+
+# Build
+
+LLVM v10.0.1 required.

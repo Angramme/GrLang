@@ -35,3 +35,16 @@ target_include_directories(grlang PUBLIC
 						   "${PROJECT_BINARY_DIR}/grComp"
 						   "${PROJECT_BINARY_DIR}/third-party"
                            )
+
+
+#CONFIG FILE
+include(BuildConfig.cmake OPTIONAL)
+
+#LLVM
+if(NOT LLVM_INCLUDE) #if not specified in the config file
+	option(LLVM_INCLUDE "llvm include directory")
+endif()
+if(NOT LLVM_LIB) #if not specified in the config file
+	option(LLVM_LIB "llvm lib directory")
+endif()
+

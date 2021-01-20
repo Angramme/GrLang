@@ -8,6 +8,6 @@ namespace grComp {
 		// definiton
 		// etc...
 
-		static const 
+		// static const 
 	};
 }
