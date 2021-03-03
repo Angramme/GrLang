@@ -118,19 +118,19 @@ namespace grComp {
 
 	}
 
-	void TokToStr(Token tok) {
+	std::string TokToStr(const Token& tok) {
 		switch (tok) {
-			case tok_func_arrow: std::cout << " func_arrow "; break;
-			case tok_extern: std::cout << " extern "; break;
-			case tok_identifier: std::cout << " ID "; break;
-			case tok_real_number: std::cout << " R-number "; break;
-			case tok_relative_number: std::cout << " Z-number "; break;
-			case tok_assign: std::cout << "assign "; break;
-			case tok_not_eq: std::cout << " not_eq "; break;
-			case tok_grtr_eq: std::cout << " gr_eq "; break;
-			case tok_lssr_eq: std::cout << " ls_eq "; break;
-			case tok_line_break: std::cout << " (;) "; break;
-			default: std::cout << (char)tok; break;
+			case tok_func_arrow: return " func_arrow "; 
+			case tok_extern: return " extern ";
+			case tok_identifier: return " ID ";
+			case tok_real_number: return " R-number ";
+			case tok_relative_number: return " Z-number ";
+			case tok_assign: return "assign ";
+			case tok_not_eq: return " not_eq ";
+			case tok_grtr_eq: return " gr_eq ";
+			case tok_lssr_eq: return " ls_eq ";
+			case tok_line_break: return " (;) ";
+			default: return " "+(char)tok;
 		}
 	}
 }

@@ -41,4 +41,7 @@ namespace grComp {
 		Lexer(std::istream* stream);
 		int get_tok();
 	};
+
+
+	std::string TokToStr(const Token& tok);
 }
