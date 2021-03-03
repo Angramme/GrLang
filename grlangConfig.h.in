@@ -5,3 +5,5 @@
 #define PLATFORM_X64 @configX64@
 #define PLATFORM_X32 @configX32@
 
+#cmakedefine PLATFORM_UNIX
+#cmakedefine PLATFORM_WIN32
