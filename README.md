@@ -1,10 +1,9 @@
 # GrLang
-A really bad programming language.
+This is a prototype of my custom programming language compiler. It's written in C++ and uses LLVM for cross-compilation. It uses a custom-written Lexer, Parser, and a lazy AST system.
 
 # Introduction
 
-This programming language is heavily inspired by C++, Haskell and Jai. It is an imperative static/strongly typed C-style language. Here is a brief list of features that are 
-borrowed from the before-mentioned languages or conceptualized by me. 
+This programming language is heavily inspired by C++, Haskell and Jai. It is an imperative static/strongly typed C-style language. Here is a brief list of planned features that are borrowed from the before-mentioned languages or conceptualized by me. 
 
 *Directly copied from [Unofficial Jai Github](https://github.com/BSVino/JaiPrimer/blob/master/JaiPrimer.md)*:
 - Arbitrary compile-time code execution – Any function of the program can be made to run at compile time with #run
@@ -19,6 +18,7 @@ borrowed from the before-mentioned languages or conceptualized by me.
 *My own ideas*:
 - allow different files to be interpreted at runtime individually whilst the rest of the program is compiled, this would allow even faster iteration on non performance heavy tasks such as UI.
 - alternative way of handling multiple return values using the `final` operator.
+- allow to attach a preprocessor task to statements like import (this would allow to import .json .yaml files using the standard import keyword for example)
 
 # Syntax
 
