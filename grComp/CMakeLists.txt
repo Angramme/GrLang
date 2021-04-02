@@ -11,7 +11,7 @@ add_library(grComp ${grComp_SRC})
 
 target_include_directories(grComp PUBLIC
                            "${PROJECT_BINARY_DIR}"
-						   "${CMAKE_CURRENT_SOURCE_DIR}/../core"
+						   "${CMAKE_CURRENT_SOURCE_DIR}/../"
 						   "${LLVM_INCLUDE}"
 						   "${LLVM_BUILD_INCLUDE}"
                            )

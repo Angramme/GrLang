@@ -1,8 +1,8 @@
 #pragma once
 
 #include <string>
-#include "ProgramMemory.h"
-#include "../third-party/tl/expected.hpp"
+#include "gVM/ProgramMemory.h"
+#include "third-party/tl/expected.hpp"
 
 namespace grComp {
 	struct compile_error
