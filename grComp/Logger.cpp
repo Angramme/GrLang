@@ -36,13 +36,18 @@ namespace grComp {
 #endif
 
 		}
-		void InternalRuntimeError(std::string msg) {
+		void InternalRuntimeError(std::string msg, const char* in_file, int on_line, const char* in_function) {
+			LOG("\n!!==!!==!!==!!==!!==!!\n!!==!!==!!==!!==!!==!!", yellow);
 			LOG(
-				"Internal Compiler Runtime Error: \n"
-				+ msg +
+				(std::string)"Internal Compiler Runtime Error: \n" +
+				"\tin file: " + in_file +
+				"\n\ton line: " + std::to_string(on_line) +
+				"\n\tin function: " + in_function + "\n" +
+				msg +
 				"\n This is abnormal behaviour. Please report this error to the GrLang project maintainer.",
 				magenta
 			);
+			LOG("!!==!!==!!==!!==!!==!!\n!!==!!==!!==!!==!!==!!\n", yellow);
 		}
 		void CompiletimeError(std::string msg) {
 			LOG(
