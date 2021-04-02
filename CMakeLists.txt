@@ -40,6 +40,7 @@ configure_file(grlangConfig.h.in grlangConfig.h)
 
 add_subdirectory(gVM)
 add_subdirectory(grComp)
+add_subdirectory(Tests)
 
 # add the executable
 add_executable(grlang grlang.cxx)

@@ -3,14 +3,15 @@
 
 #include "core/BaseTypes.h"
 #include "gVM/execute.h"
+#include "gVM/ProgramMemory.h"
 
-#include "grComp/ProgramMemory.h"
 #include "grComp/compile.h"
 
 //file loading
 #include <string>
 #include <fstream>
 #include <streambuf>
+
 
 
 int main(int argc, char** argv) {
