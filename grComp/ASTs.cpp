@@ -3,12 +3,19 @@
 
 namespace grComp {
 
-	BaseAST::BaseAST(const AstType& expr_type)
-		: expr_type(expr_type)
+	BaseAST::BaseAST(const AstType& ast_type)
+		: ast_type(ast_type)
 	{}
 
-	ExprAST::ExprAST(const AstType& expr_type)
-		: BaseAST(expr_type)
+	EagerAST::EagerAST(const AstType& ast_type)
+		: BaseAST(ast_type)
+	{}
+	LazyAST::LazyAST(const AstType& ast_type)
+		: BaseAST(ast_type)
+	{}
+
+	ExprAST::ExprAST(const AstType& ast_type)
+		: EagerAST(ast_type)
 	{}
 
 	NumberExprAST::NumberExprAST(double Val)
@@ -29,20 +36,76 @@ namespace grComp {
 		: Callee(Callee), Args(std::move(Args)), ExprAST(AstType::CallExprAST_t)
 	{}
 
-	PrototypeAST::PrototypeAST(const std::string &name, std::vector<std::string> Args)
-		: Name(name), Args(std::move(Args)), BaseAST(AstType::PrototypeAST_t)
+	DefinitionAST::DefinitionAST(const AstType& ast_type)
+		: EagerAST(ast_type)
 	{}
 
-	FunctionAST::FunctionAST(std::unique_ptr<PrototypeAST> Proto, std::unique_ptr<ExprAST> Body)
-		: Proto(std::move(Proto)), Body(std::move(Body)), BaseAST(AstType::FunctionAST_t)
+	PrototypeAST::PrototypeAST(const std::string &name, std::vector<std::string> Args)
+		: Name(name), Args(std::move(Args)), EagerAST(AstType::PrototypeAST_t)
 	{}
+
+	FunctionDefAST::FunctionDefAST(std::unique_ptr<PrototypeAST> Proto, std::unique_ptr<ExprAST> Body)
+		: Proto(std::move(Proto)), Body(std::move(Body)), DefinitionAST(AstType::FunctionDefAST_t)
+	{}
+
+	ModuleAST::ModuleAST()
+		: EagerAST(AstType::ModuleAST_t)
+	{}
+
+
+	// type functions
+
+#define AST_TYPE_MODIFIER(xTYPE) template<> struct BaseAST::AstTypeToClassType<AstType::xTYPE##_t> { typedef grComp::##xTYPE type;  };
+	AST_TYPES
+#undef AST_TYPE_MODIFIER 
+
+
+	template<AstType ast>
+	inline bool BaseAST::is_lazy() {
+		return is_lazy<AstTypeToClassType<ast>::type>();
+	}
+	template<AstType ast>
+	inline bool BaseAST::is_expression() {
+		return is_expression<AstTypeToClassType<ast>::type>();
+	}
+	template<AstType ast>
+	inline bool BaseAST::is_definition() {
+		return is_definition<AstTypeToClassType<ast>::type>();
+	}
+#define AST_TYPE_MODIFIER(xTYPE) template bool BaseAST::is_lazy<AstType::xTYPE##_t>();
+AST_TYPES
+#define AST_TYPE_MODIFIER(xTYPE) template bool BaseAST::is_expression<AstType::xTYPE##_t>();
+AST_TYPES
+#define AST_TYPE_MODIFIER(xTYPE) template bool BaseAST::is_definition<AstType::xTYPE##_t>();
+AST_TYPES
+
+	template<typename ast>
+	inline bool BaseAST::is_lazy() {
+		return std::is_base_of<LazyAST, ast>::value;
+	}
+	template<typename ast>
+	inline bool BaseAST::is_expression() {
+		return std::is_base_of<ExprAST, ast>::value;
+	}
+	template<typename ast>
+	inline bool BaseAST::is_definition() {
+		return std::is_base_of<DefinitionAST, ast>::value;
+	}
+#define AST_TYPE_MODIFIER(xTYPE) template bool BaseAST::is_lazy<xTYPE>();
+AST_TYPES
+#define AST_TYPE_MODIFIER(xTYPE) template bool BaseAST::is_expression<xTYPE>();
+AST_TYPES
+#define AST_TYPE_MODIFIER(xTYPE) template bool BaseAST::is_definition<xTYPE>();
+AST_TYPES
+
+
 
 
 
 	// to string conversions
 
 	static std::string BinaryExprASTtoStr(const BinaryExprAST* ast) {
-		return ExprASTtoStr(ast->LHS.get()) + (char)ast->Op + ExprASTtoStr(ast->RHS.get());
+		return ASTtoStr(ast->LHS.get()) + (char)ast->Op + ASTtoStr(ast->RHS.get());
 	}
 
 	static std::string NumberExprASTtoStr(const NumberExprAST* ast) {
