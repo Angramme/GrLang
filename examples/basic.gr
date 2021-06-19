@@ -1,0 +1,5 @@
+
+
+$ this is a comment lol
+
+MAIN a:R b:R c:R => $ another comment $ (a + b + c) * a + c

@@ -1,0 +1,7 @@
+
+
+$ some random function
+f a:R b:R => (a+b)*(a+b)*a*b +a+b
+
+MAIN a:R b:R => (a + b) * (b + a) + f(a, a) + f(a, b)
+
