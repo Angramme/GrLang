@@ -5,7 +5,7 @@
 #include <array>
 
 #include "grComp/Type.h"
-#include "grComp/Parser.h"
+//#include "grComp/Parser.h"
 
 
 namespace grComp {
@@ -86,6 +86,8 @@ namespace grComp {
 		EagerAST(const AstType& ast_type);
 	};
 
+
+	class Parser;
 	// TODO: actually implement it! and replace EagerAST by LazyAST in big asts like ModuleAST, FunctionAST etc...
 	// evaluated asynchronously
 	class LazyAST : public BaseAST {
@@ -203,10 +205,13 @@ namespace grComp {
 
 #define AST_TYPE_MODIFIER(xTYPE) case AstType::##xTYPE##_t: return is_lazy<xTYPE>();
 RUNTIME_FUNC(is_lazy)
+#undef AST_TYPE_MODIFIER
 #define AST_TYPE_MODIFIER(xTYPE) case AstType::##xTYPE##_t: return is_expression<xTYPE>();
 RUNTIME_FUNC(is_expression)
+#undef AST_TYPE_MODIFIER
 #define AST_TYPE_MODIFIER(xTYPE) case AstType::##xTYPE##_t: return is_definition<xTYPE>();
 RUNTIME_FUNC(is_definition)
+#undef AST_TYPE_MODIFIER
 
 #undef AST_TYPE_MODIFIER
 #undef RUNTIME_FUNC
