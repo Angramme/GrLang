@@ -1,5 +1,5 @@
 # GrLang
-This is a prototype of my custom programming language compiler. It's written in C++ and uses LLVM for cross-compilation. It uses a custom-written Lexer, Parser, and a lazy AST system.
+This is a prototype of my custom programming language compiler. It's written in C++. The front-end is custom-written, namely a Lexer, Parser and a lazy AST system. It uses LLVM for middle and back-end, namely IR optimization, IR to machine code, machine code optimization and cross-compilation. 
 
 # Introduction
 
