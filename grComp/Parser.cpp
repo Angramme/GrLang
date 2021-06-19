@@ -1,14 +1,13 @@
 #include "Parser.h"
 
-#include "Lexer.h"
-#include "ASTs.h"
+#include "CompileError.h"
+#include "Logger.h"
 
-#include <memory>
 #include <array>
 
 namespace grComp {
 
-	static constexpr int binop_array_offset = 120;
+	static constexpr const int binop_array_offset = 120;
 	static constexpr std::array<char, 500> init_binop_precedence() {
 		std::array<char, 500> temp = std::array<char, 500>();
 		constexpr int of = binop_array_offset; //offset
@@ -25,265 +24,319 @@ namespace grComp {
 		return temp;
 	}
 
-	class Parser {
-	public:
+
+	
+	Parser::Parser(std::unique_ptr<Lexer> lexer)
+		: m_lexer(std::move(lexer))
+	{
+		m_lexer->get();
+	}
+
+	Error::ex<std::unique_ptr<ModuleAST>> Parser::get() {
+		return ParseModule();
+	}
+
+	//ERROR Logging
+	Error::CError Parser::throw_error(std::string msg){
+		Error::CError err;
+		err.compile_step = Error::CompileStep::parser;
+		err.hint_message = "";
+		err.err_message = msg;
+		err.file = get_filename().string();
+		err.line = get_line();
+		return err;
+	}
+
+	//==============
+		
 
 
-	private:
-		std::unique_ptr<grComp::Lexer> m_lexer;
+	void Parser::dispatch_next() {
+		// const auto elem = *lazy_dispatch.begin();
+		// lazy_dispatch.pop_front();
+		// if (elem.type == dispatch_item::AstItem) {
+		// 	if (!BaseAST::is_lazy(elem.ast)) { // is eager
+		// 		if (BaseAST::is_expression(elem.ast)) *reinterpret_cast<std::unique_ptr<ExprAST>*>(elem.ptr) = std::move(ParseExpression().value());
+		// 		else if (BaseAST::is_definition(elem.ast)) *reinterpret_cast<std::unique_ptr<DefinitionAST>*>(elem.ptr) = std::move(ParseDefinition().value());
+		// 		else {
+		// 			GRCOMP_INTERNAL_RUNTIME_ERROR("invalid dispatch item ast-type!!! : " + (int)elem.ast);
+		// 		}
+		// 	}else{ // is lazy
+		// 		// will be implemented eventually...
+		// 	}
+		// }
+		// else if (elem.type == dispatch_item::TokenItem) {
+		// 	// process just a string
+		// 	grComp::Token* it = reinterpret_cast<grComp::Token*>(elem.ptr);
+		// 	while (*it) {
+		// 		if (CurTok() != *it) grComp::Log::CompiletimeError("unexpected token! " + (char)CurTok());
+		// 		it++;
+		// 		GetTok();
+		// 	}
+		// 	delete[] elem.ptr;
+		// }
+		// else {
+		// 	GRCOMP_INTERNAL_RUNTIME_ERROR("invalid dispatch item type!!! : " + (int)elem.type);
+		// }
+	}
 
-	public:
-		Parser(std::unique_ptr<Lexer> lexer)
-			: m_lexer(std::move(lexer))
-		{}
+	/// module ::= definitions
+	Error::ex<std::unique_ptr<ModuleAST>> Parser::ParseModule() {
+		std::unique_ptr<ModuleAST> ast = std::make_unique<ModuleAST>();
+		bool LOOP = true;
 
-	private:
-
-		//ERROR Logging
-		template<typename ASTtype>
-		std::unique_ptr<ASTtype> LogError(const char *Str) {
-			fprintf(stderr, "LogError: %s\n", Str);
-			return nullptr;
+		while (LOOP) {
+			switch (CurTok()) {
+			case tok_eof:
+				LOOP = false; break;
+			case ';': // ignore top-level semicolons.
+				GetTok();
+				break;
+			case tok_line_break:
+				GetTok();
+				break;
+			/*case tok_extern:
+				HandleExtern();
+				break;*/
+			case tok_identifier:{
+				auto X = ParseDefinition();
+				if(!X) return Error::unex(X.error()); 
+				ast->lines.push_back(std::move(X.value()));
+			} break;
+			default:
+				return Error::unex(throw_error("Unexpected token encountered while parsing module: "+TokToStr(CurTok())));
+				break;
+			}
 		}
 
+		return std::move(ast);
+	}
 
-		//==============
+	/// top ::= definition | external | expression | ';'
+	//void MainLoop() {
+	//	while (1) {
+	//		switch (CurTok()) {
+	//		case tok_eof:
+	//			return;
+	//		case ';': // ignore top-level semicolons.
+	//			GetTok();
+	//			break;
+	//		/*case tok_extern:
+	//			HandleExtern();
+	//			break;*/
+	//		default:
+	//			HandleDefinition();
+	//			break;
 
-#define CurTok m_lexer->cur_tok
-#define GetTok m_lexer->get_tok
+	//			//HandleTopLevelExpression(); not allowed in GR
+	//			//break;
+	//		}
+	//	}
+	//}
 
+	//void HandleDefinition() {
+	//	if (ParseFunctionDefinition()) {
+	//		//fprintf(stderr, "Parsed a function definition.\n");
+	//		Log::CompiletimeInfo("parsed a function definiton.\n");
+	//	}
+	//	else {
+	//		// Skip token for error recovery.
+	//		GetTok();
+	//	}
+	//}
 
-		/// top ::= definition | external | expression | ';'
-		void MainLoop() {
+	/// definition ::= function definition | class definition | ...
+	Error::ex<std::unique_ptr<DefinitionAST>> Parser::ParseDefinition() {
+		return std::move(ParseFunctionDefinition());
+	}
+
+	/// expression
+	///   ::= primary binoprhs
+	///
+	Error::ex<std::unique_ptr<ExprAST>> Parser::ParseExpression() {
+		auto LHS = ParsePrimary();
+		if(!LHS) return Error::unex(LHS.error());
+		// if (!LHS)
+		// 	return nullptr;
+
+		return ParseBinOpRHS(0, std::move(*LHS));
+	}
+
+	// ========= PRIMARY EXPRESSIONS ==========
+
+	/// primary
+	///   ::= identifierexpr
+	///   ::= numberexpr
+	///   ::= parenexpr
+	Error::ex<std::unique_ptr<ExprAST>> Parser::ParsePrimary() {
+		switch (CurTok()) {
+		default:
+			// return LogError<ExprAST>("unknown token ["+ TokToStr((Token)CurTok()) +"] when expecting an expression");
+			return Error::unex(throw_error("unknown token ["+ TokToStr(CurTok()) +"] when expecting an expression"));
+		case tok_identifier:
+			return ParseIdentifierExpr();
+		case tok_real_number:
+			return ParseNumberExpr();
+		case '(':
+			return ParseParenExpr();
+		}
+	}
+
+	/// numberexpr ::= number
+	Error::ex<std::unique_ptr<ExprAST>> Parser::ParseNumberExpr() {
+		auto Result = std::make_unique<NumberExprAST>(m_lexer->get_real_num_value());
+		GetTok(); // consume the number
+		return std::move(Result);
+	}
+
+	/// parenexpr ::= '(' expression ')'
+	Error::ex<std::unique_ptr<ExprAST>> Parser::ParseParenExpr() {
+		GetTok(); // eat (.
+		auto V = ParseExpression();
+		if (!V) return V;
+
+		if (CurTok() != ')')
+			return Error::unex(throw_error("expected ')'"));
+			// return LogError<ExprAST>("expected ')'");
+		GetTok(); // eat ).
+		return V;
+	}
+
+	/// identifierexpr
+	///   ::= identifier	
+	///   ::= identifier '(' expression* ')'
+	Error::ex<std::unique_ptr<ExprAST>> Parser::ParseIdentifierExpr() {
+		std::string IdName = m_lexer->get_identifier_str();
+
+		GetTok();  // eat identifier.
+
+		if (CurTok() != '(') // Simple variable ref.
+			return std::make_unique<VariableExprAST>(IdName);
+
+		// Call.
+		GetTok();  // eat (
+		std::vector<std::unique_ptr<ExprAST>> Args;
+		if (CurTok() != ')') {
 			while (1) {
-				switch (CurTok) {
-				case tok_eof:
-					return;
-				case ';': // ignore top-level semicolons.
-					GetTok();
-					break;
-				/*case tok_extern:
-					HandleExtern();
-					break;*/
-				default:
-					HandleDefinition();
+				if (auto Arg = ParseExpression())
+					Args.push_back(std::move(*Arg));
+				else
+					return Arg;
+
+				if (CurTok() == ')')
 					break;
 
-					//HandleTopLevelExpression(); not allowed in GR
-					//break;
-				}
-			}
-		}
-
-		void HandleDefinition() {
-			if (ParseDefinition()) {
-				//fprintf(stderr, "Parsed a function definition.\n");
-			}
-			else {
-				// Skip token for error recovery.
+				if (CurTok() != ',')
+					// return LogError<ExprAST>("Expected ')' or ',' in argument list");
+					return Error::unex(throw_error("Expected ')' or ',' in argument list"));
 				GetTok();
 			}
 		}
 
+		// Eat the ')'.
+		GetTok();
 
-		/// expression
-		///   ::= primary binoprhs
-		///
-		std::unique_ptr<ExprAST> ParseExpression() {
-			auto LHS = ParsePrimary();
-			if (!LHS)
-				return nullptr;
-
-			return ParseBinOpRHS(0, std::move(LHS));
-		}
-
-		// ========= PRIMARY EXPRESSIONS ==========
-
-		/// primary
-		///   ::= identifierexpr
-		///   ::= numberexpr
-		///   ::= parenexpr
-		std::unique_ptr<ExprAST> ParsePrimary() {
-			switch (CurTok) {
-			default:
-				return LogError<ExprAST>("unknown token when expecting an expression");
-			case tok_identifier:
-				return ParseIdentifierExpr();
-			case tok_real_number:
-				return ParseNumberExpr();
-			case '(':
-				return ParseParenExpr();
-			}
-		}
-
-		/// numberexpr ::= number
-		std::unique_ptr<ExprAST> ParseNumberExpr() {
-			auto Result = std::make_unique<NumberExprAST>(m_lexer->RealNumValue);
-			GetTok(); // consume the number
-			return std::move(Result);
-		}
-
-		/// parenexpr ::= '(' expression ')'
-		std::unique_ptr<ExprAST> ParseParenExpr() {
-			GetTok(); // eat (.
-			auto V = ParseExpression();
-			if (!V)
-				return nullptr;
-
-			if (CurTok != ')')
-				return LogError<ExprAST>("expected ')'");
-			GetTok(); // eat ).
-			return V;
-		}
-
-		/// identifierexpr
-		///   ::= identifier	
-		///   ::= identifier '(' expression* ')'
-		std::unique_ptr<ExprAST> ParseIdentifierExpr() {
-			std::string IdName = m_lexer->IdentifierStr;
-
-			GetTok();  // eat identifier.
-
-			if (CurTok != '(') // Simple variable ref.
-				return std::make_unique<VariableExprAST>(IdName);
-
-			// Call.
-			GetTok();  // eat (
-			std::vector<std::unique_ptr<ExprAST>> Args;
-			if (CurTok != ')') {
-				while (1) {
-					if (auto Arg = ParseExpression())
-						Args.push_back(std::move(Arg));
-					else
-						return nullptr;
-
-					if (CurTok == ')')
-						break;
-
-					if (CurTok != ',')
-						return LogError<ExprAST>("Expected ')' or ',' in argument list");
-					GetTok();
-				}
-			}
-
-			// Eat the ')'.
-			GetTok();
-
-			return std::make_unique<CallExprAST>(IdName, std::move(Args));
-		}
+		return std::make_unique<CallExprAST>(IdName, std::move(Args));
+	}
 
 
-		// =========== BINARY EXPRESSION PARSER =============
+	// =========== BINARY EXPRESSION PARSER =============
 
 
-		static constexpr std::array<char, 500> binop_precendence = init_binop_precedence();
+	static constexpr std::array<char, 500> binop_precedence = init_binop_precedence();
 
-		static int GetTokPrecedence(int tok) {
-			/*if (!isascii(CurTok))
-				return -1;*/
+	static constexpr int GetTokPrecedence(const int tok) {
+		/*if (!isascii(CurTok))
+			return -1;*/
 
-			// Make sure it's a declared binop.
-			int TokPrec = binop_precendence[tok + binop_array_offset];
-			if (TokPrec <= 0) return -1;
-			return TokPrec;
-		}
+		#ifndef NDEBUG
+			if(tok+binop_array_offset > (int)binop_precedence.size()-1)
+				GRCOMP_INTERNAL_RUNTIME_ERROR("invalid token \""+TokToStr(tok)+"\" is out of binop range...");
+		#endif
 
-		/// binoprhs
-		///   ::= ('+' primary)*
-		std::unique_ptr<ExprAST> ParseBinOpRHS(int ExprPrec, std::unique_ptr<ExprAST> LHS) {
-			// If this is a binop, find its precedence.
-			while (1) {
-				int TokPrec = GetTokPrecedence(CurTok);
+		// Make sure it's inside the defined range
+		if( tok+binop_array_offset < 0 ) return -1;
+		// Make sure it's a declared binop.
+		int TokPrec = binop_precedence[tok + binop_array_offset];
+		if (TokPrec <= 0) return -1;
+		return TokPrec;
+	}
 
-				// If this is a binop that binds at least as tightly as the current binop,
-				// consume it, otherwise we are done.
-				if (TokPrec < ExprPrec)
-					return LHS;
+	/// binoprhs
+	///   ::= ('+' primary)*
+	Error::ex<std::unique_ptr<ExprAST>> Parser::ParseBinOpRHS(int ExprPrec, std::unique_ptr<ExprAST> LHS) {
+		// If this is a binop, find its precedence.
+		while (1) {
+			int TokPrec = GetTokPrecedence(CurTok());
+
+			// If this is a binop that binds at least as tightly as the current binop,
+			// consume it, otherwise we are done.
+			if (TokPrec < ExprPrec)
+				return LHS;
 				
-				// Okay, we know this is a binop.
-				int BinOp = CurTok;
-				GetTok();  // eat binop
+			// Okay, we know this is a binop.
+			int BinOp = CurTok();
+			GetTok();  // eat binop
 
-				// Parse the primary expression after the binary operator.
-				auto RHS = ParsePrimary();
+			// Parse the primary expression after the binary operator.
+			auto RHS = ParsePrimary();
+			if (!RHS)
+				return RHS;
+
+			// If BinOp binds less tightly with RHS than the operator after RHS, let
+			// the pending operator take RHS as its LHS.
+			int NextPrec = GetTokPrecedence(CurTok());
+			if (TokPrec < NextPrec) {
+				RHS = ParseBinOpRHS(TokPrec + 1, std::move(*RHS));
 				if (!RHS)
-					return nullptr;
-
-				// If BinOp binds less tightly with RHS than the operator after RHS, let
-				// the pending operator take RHS as its LHS.
-				int NextPrec = GetTokPrecedence(CurTok);
-				if (TokPrec < NextPrec) {
-					RHS = ParseBinOpRHS(TokPrec + 1, std::move(RHS));
-					if (!RHS)
-						return nullptr;
-				}
-
-				// Merge LHS/RHS.
-				LHS = std::make_unique<BinaryExprAST>(BinOp, std::move(LHS),
-					std::move(RHS));
-			}  // loop around to the top of the while loop.
-		}
-
-
-		// =========== Function Prototype and Definition Parser ==========
-		
-		/// prototype
-		///   ::= id '(' id* ')'
-		std::unique_ptr<PrototypeAST> ParsePrototype() {
-			if (CurTok != tok_identifier)
-				return LogError<PrototypeAST>("Expected function name in prototype");
-
-			std::string FnName = m_lexer->IdentifierStr;
-			GetTok();
-
-			//if (CurTok != '(')
-			//	return LogErrorP("Expected '(' in prototype");
-
-			// Read the list of argument names.
-			std::vector<std::string> ArgNames;
-			while (GetTok() == tok_identifier) {
-				ArgNames.push_back(m_lexer->IdentifierStr);
-				if (GetTok() != ':')
-					return LogError<PrototypeAST>("Expected a type for the function argument");
-				GetTok(); //eat type  (TODO: add actual type to the language)
+					return RHS;
 			}
-			/*if (CurTok != ')')
-				return LogErrorP("Expected ')' in prototype");*/
 
-			if (CurTok != tok_func_arrow)
-				return LogError<PrototypeAST>("Expected a function arrow \"=>\" followed by return value/s.");
-			GetTok();  // eat '=>'.
+			// Merge LHS/RHS.
+			LHS = std::make_unique<BinaryExprAST>(BinOp, std::move(LHS),
+				std::move(*RHS));
+		}  // loop around to the top of the while loop.
+	}
 
-			return std::make_unique<PrototypeAST>(FnName, std::move(ArgNames));
+
+	// =========== Function Prototype and Definition Parser ==========
+	
+	/// prototype
+	///   ::= id '(' id* ')'
+	Error::ex<std::unique_ptr<PrototypeAST>> Parser::ParsePrototype() {
+		if (CurTok() != tok_identifier)
+			return Error::unex(throw_error("Expected function name in prototype, got token: "+TokToStr(CurTok())));
+
+		std::string FnName = m_lexer->get_identifier_str();
+	
+		// Read the list of argument names.
+		std::vector<std::string> ArgNames;
+		while (GetTok() == tok_identifier) {
+			ArgNames.push_back(m_lexer->get_identifier_str());
+			if (GetTok() != ':')
+				return Error::unex(throw_error("Expected a type delimiter \":\" for the function argument"));
+			if (GetTok() != tok_identifier) //eat type  (TODO: add actual type to the language)
+				return Error::unex(throw_error("Expected a type for the function argument"));
 		}
+		if (CurTok() != tok_func_arrow)
+			return Error::unex(throw_error("Expected a function arrow \"=>\" followed by return value/s. Got token "+TokToStr(CurTok())));
+		GetTok();  // eat '=>'.
+
+		return std::make_unique<PrototypeAST>(FnName, std::move(ArgNames));
+	}
 		
-		/// definition ::= 'def' prototype expression
-		std::unique_ptr<FunctionAST> ParseDefinition() {
-			//GetTok();  // eat def.
-			auto Proto = ParsePrototype();
-			if (!Proto) return nullptr;
+	/// definition ::= 'def' prototype expression
+	Error::ex<std::unique_ptr<DefinitionAST>> Parser::ParseFunctionDefinition() {
+		auto Proto = ParsePrototype();
+		if (!Proto) return Error::unex(Proto.error());
 
-			if (CurTok != '{')
-				return LogError<FunctionAST>("Expected \"{\"");
+		auto E = ParseExpression();
+		if (!E) return Error::unex(E.error());
 
-			auto E = ParseExpression();
-			if (!E)
-				return nullptr;
-
-			if (GetTok() != '}')
-				return LogError<FunctionAST>("Expected \"}\"");
-			GetTok(); //eat }
-
-			return std::make_unique<FunctionAST>(std::move(Proto), std::move(E));
-		}
+		return std::make_unique<FunctionDefAST>(std::move(*Proto), std::move(*E));
+	}
 		
 
-		// =========== Command Parser =============
+	// =========== Command Parser =============
 
-
-
-
-#undef CurTok
-#undef GetTok
-	};
 }
