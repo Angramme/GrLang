@@ -1,6 +1,8 @@
 #pragma once
 
-#include <istream>
+#include "Reader.h"
+#include <memory>
+#include <string>
 
 namespace grComp {
 	enum Token : int {
@@ -30,18 +32,28 @@ namespace grComp {
 
 	class Lexer {
 	private:
-		std::istream* code;
-		int LastChar = ' ';
-	public:
+		// std::unique_ptr<std::istream> code;
+		// std::istream* code;
+		std::unique_ptr<Reader> reader;
+		int last_char = ' ';
+		
 		int cur_tok;
-		std::string IdentifierStr;
-		long long RelativeNumValue;
-		double RealNumValue;
+		std::string identifier_str;
+		long long relative_num_value;
+		double real_num_value;
+	public:
+		inline int get_cur_tok(){return cur_tok; };
+		inline std::string get_identifier_str(){ return identifier_str; };
+		inline long long get_relative_num_value(){ return relative_num_value; };
+		inline double get_real_num_value(){ return real_num_value; };
 
-		Lexer(std::istream* stream);
-		int get_tok();
+		Lexer(std::unique_ptr<Reader> reader);
+		int get();
+
+		inline decltype(reader->get_filename()) get_filename() { return reader->get_filename(); }
+        inline decltype(reader->get_line()) get_line() { return reader->get_line(); }
 	};
 
 
-	std::string TokToStr(const Token& tok);
+	std::string TokToStr(int tok);
 }
