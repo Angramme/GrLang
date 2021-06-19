@@ -13,7 +13,7 @@ namespace gVM {
 		~StackMemory();
 
 		inline void* at(maddress i) { return m_buffer+i; }
-		inline void setat(maddress i, void* data, maddress len) { memcpy(m_buffer + i, data, len); }
+		inline void setat(maddress i, void* data, maddress len) { memcpy(m_buffer + i, data, (size_t)len); }
 
 	private:
 		void m_alloc(size_t size);
