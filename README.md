@@ -89,3 +89,4 @@ final value := switch x:
 # Build
 
 LLVM v10.0.1 required.
+Make sure it is installed or supply a path through CMAKE_PREFIX_PATH or LLVM_DIR cmake options.
