@@ -8,22 +8,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 
-#CONFIG FILE
-include(BuildConfig.cmake OPTIONAL)
-
-#LLVM
-if(NOT LLVM_INCLUDE) #if not specified in the config file
-	option(LLVM_INCLUDE "llvm include directory")
-endif()
-if(NOT LLVM_BUILD_INCLUDE) #if not specified in the config file
-	option(LLVM_BUILD_INCLUDE "llvm build include directory")
-endif()
-if(NOT LLVM_LIB) #if not specified in the config file
-	option(LLVM_LIB "llvm lib directory")
-endif()
-
-
-#ARCHITECTURE
+# ARCHITECTURE
 if(NOT "${CMAKE_GENERATOR}" MATCHES "(Win64|IA64)")
     set(configX32 True)
 	set(configX64 False)
@@ -35,25 +20,46 @@ endif()
 set(PLATFORM_UNIX ${UNIX})
 set(PLATFORM_WIN32 ${WIN32})
 
-configure_file(grlangConfig.h.in grlangConfig.h)
 
+# LLVM
+find_package(LLVM REQUIRED CONFIG)
+
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+add_definitions(${LLVM_DEFINITIONS})
+
+# DEFINITION HEADER FILE
+include(CheckTypeSize)
+check_type_size("void*" SIZEOF_VOID_P BUILTIN_TYPES_ONLY)
+configure_file(grlangConfig.h.in grlangConfig.h)
 
 add_subdirectory(gVM)
 add_subdirectory(grComp)
 add_subdirectory(Tests)
 
-# add the executable
+### EXECUTABLES
+# add the compiler executable
 add_executable(grlang grlang.cxx)
 
+
+### LINKING
 target_link_libraries(grlang PUBLIC gVM)
 target_link_libraries(grlang PUBLIC grComp)
 
+# Find the libraries that correspond to the LLVM components
+# that we wish to use
+# llvm_map_components_to_libnames(llvm_libs support core irreader)
+# target_link_libraries(grlang PUBLIC "${llvm_libs}")
+
+
+### INCLUDE DIRECTORIES
 target_include_directories(grlang PUBLIC
                            "${PROJECT_BINARY_DIR}"
                            "${PROJECT_BINARY_DIR}/gVM"
 						   "${PROJECT_BINARY_DIR}/core"
 						   "${PROJECT_BINARY_DIR}/grComp"
 						   "${PROJECT_BINARY_DIR}/third-party"
-						   "${LLVM_INCLUDE}"
-						   "${LLVM_BUILD_INCLUDE}"
+						   "${LLVM_INCLUDE_DIRS}"
                            )
+
